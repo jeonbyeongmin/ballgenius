@@ -1,0 +1,2 @@
+# KBO 데이터 자동 동기화 (매일 오전 9시)
+# 0 9 * * * cd /Users/jeonbyeongmin/project/ballgenius && npm run sync:kbo >> /var/log/kbo-sync.log 2>&1

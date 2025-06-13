@@ -1,0 +1,249 @@
+// BallGenius Database Schema
+// KBO 야구 예측 및 배팅 게임 플랫폼
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 사용자 정보
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  points    Int      @default(1000) // 초기 포인트 1000점
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 통계 정보
+  totalPredictions      Int @default(0)
+  successfulPredictions Int @default(0)
+  totalBets             Int @default(0)
+  successfulBets        Int @default(0)
+  currentStreak         Int @default(0) // 현재 연승 기록
+  maxStreak             Int @default(0) // 최대 연승 기록
+  
+  // 관계
+  predictions    Prediction[]
+  bets          Bet[]
+  purchases     Purchase[]
+  pointHistory  PointHistory[]
+  inventory     UserInventory[]
+
+  @@map("users")
+}
+
+// KBO 경기 정보
+model Game {
+  id            String   @id // KBO API의 G_ID 사용
+  date          String   // YYYYMMDD 형식
+  time          String   // 경기 시간
+  homeTeamId    String
+  homeTeamName  String
+  awayTeamId    String
+  awayTeamName  String
+  stadium       String
+  
+  // 경기 결과
+  homeScore     Int?
+  awayScore     Int?
+  status        GameStatus @default(SCHEDULED)
+  
+  // 투수 정보
+  homePitcherId String?
+  homePitcherName String?
+  awayPitcherId String?
+  awayPitcherName String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // 관계
+  predictions   Prediction[]
+  bets         Bet[]
+  betPools     BetPool[]
+
+  @@map("games")
+}
+
+// 예측 정보
+model Prediction {
+  id               String          @id @default(cuid())
+  userId           String
+  gameId           String
+  predictedWinner  PredictedResult // HOME, AWAY, DRAW
+  predictedHomeScore Int?          // 상세 점수 예측 (선택사항)
+  predictedAwayScore Int?
+  pointsEarned     Int             @default(0)
+  status           PredictionStatus @default(PENDING)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  // 관계
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gameId]) // 한 사용자는 한 경기당 하나의 예측만 가능
+  @@map("predictions")
+}
+
+// 배팅 정보
+model Bet {
+  id               String          @id @default(cuid())
+  userId           String
+  gameId           String
+  betAmount        Int             // 배팅 포인트
+  predictedWinner  PredictedResult
+  odds             Float           // 배팅 시점의 배당률
+  potentialWin     Int             // 예상 획득 포인트
+  actualWin        Int             @default(0) // 실제 획득 포인트
+  status           BetStatus       @default(ACTIVE)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  // 관계
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gameId]) // 한 사용자는 한 경기당 하나의 배팅만 가능
+  @@map("bets")
+}
+
+// 배팅 풀 정보 (실시간 배당률 계산용)
+model BetPool {
+  id          String @id @default(cuid())
+  gameId      String
+  homePool    Int    @default(0) // 홈팀 배팅 총액
+  awayPool    Int    @default(0) // 어웨이팀 배팅 총액
+  totalPool   Int    @default(0) // 전체 배팅 총액
+  homeOdds    Float  @default(1.0) // 홈팀 배당률
+  awayOdds    Float  @default(1.0) // 어웨이팀 배당률
+  updatedAt   DateTime @updatedAt
+
+  // 관계
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId])
+  @@map("bet_pools")
+}
+
+// 상점 아이템
+model ShopItem {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String
+  price       Int
+  category    ItemCategory
+  imageUrl    String?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // 관계
+  purchases   Purchase[]
+  inventory   UserInventory[]
+
+  @@map("shop_items")
+}
+
+// 구매 기록
+model Purchase {
+  id          String    @id @default(cuid())
+  userId      String
+  itemId      String
+  price       Int       // 구매 시점 가격
+  quantity    Int       @default(1)
+  createdAt   DateTime  @default(now())
+
+  // 관계
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item ShopItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@map("purchases")
+}
+
+// 사용자 인벤토리
+model UserInventory {
+  id        String   @id @default(cuid())
+  userId    String
+  itemId    String
+  quantity  Int      @default(1)
+  isActive  Boolean  @default(false) // 현재 사용 중인지
+  createdAt DateTime @default(now())
+
+  // 관계
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item ShopItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
+  @@map("user_inventory")
+}
+
+// 포인트 히스토리
+model PointHistory {
+  id          String      @id @default(cuid())
+  userId      String
+  amount      Int         // 양수: 획득, 음수: 사용
+  type        PointType
+  description String?
+  relatedId   String?     // 관련 예측/배팅/구매 ID
+  createdAt   DateTime    @default(now())
+
+  // 관계
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("point_history")
+}
+
+// Enums
+enum GameStatus {
+  SCHEDULED   // 예정
+  LIVE        // 진행중
+  COMPLETED   // 완료
+  CANCELLED   // 취소
+  POSTPONED   // 연기
+}
+
+enum PredictedResult {
+  HOME
+  AWAY
+  DRAW
+}
+
+enum PredictionStatus {
+  PENDING   // 대기중
+  WIN       // 적중
+  LOSE      // 실패
+  VOID      // 무효 (경기 취소 등)
+}
+
+enum BetStatus {
+  ACTIVE    // 활성
+  WIN       // 승리
+  LOSE      // 패배
+  VOID      // 무효
+  REFUNDED  // 환불
+}
+
+enum ItemCategory {
+  AVATAR    // 아바타
+  BADGE     // 뱃지
+  BOOST     // 부스터
+  SPECIAL   // 특별 아이템
+}
+
+enum PointType {
+  DAILY_LOGIN           // 일일 로그인
+  PREDICTION_WIN        // 예측 적중
+  PREDICTION_PERFECT    // 완벽한 예측 (점수까지 맞춤)
+  BET_WIN              // 배팅 승리
+  BET_LOSE             // 배팅 실패
+  PURCHASE             // 아이템 구매
+  STREAK_BONUS         // 연승 보너스
+  ADMIN_ADJUST         // 관리자 조정
+}

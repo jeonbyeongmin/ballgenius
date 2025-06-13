@@ -1,291 +1,262 @@
 "use client";
 
-import { Game } from "@/model/game";
-import { KBO_GameState } from "@/model/kbo";
-import Image from "next/image";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 
 export default function Home() {
-  const [games, setGames] = useState<Game[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data: session } = useSession();
+  const [userStats, setUserStats] = useState<{
+    points: number;
+    predictions: number;
+    winRate: number;
+  } | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    fetch("/api/kbo/schedule")
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("🚀 ~ .then ~ data:", data);
-        if (data.games) setGames(data.games);
-        else setError(data.error || "경기 정보를 불러올 수 없습니다.");
-      })
-      .catch(() => setError("경기 정보를 불러올 수 없습니다."))
-      .finally(() => setLoading(false));
-  }, []);
+    if (session) {
+      // 사용자 통계 로드 (실제 API 구현시)
+      setUserStats({
+        points: 1000,
+        predictions: 15,
+        winRate: 73.3,
+      });
+    }
+  }, [session]);
 
   return (
-    <div className="grid grid-rows-[60px_1fr_40px] items-center justify-items-center min-h-screen p-8 pb-20 gap-8 sm:p-20 font-[family-name:var(--font-geist-sans)] bg-gray-50 dark:bg-black">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start w-full max-w-2xl">
-        <section
-          id="predict"
-          className="w-full bg-white dark:bg-zinc-900 rounded-xl shadow p-6 mb-4"
-        >
-          <h2 className="text-xl font-bold mb-2">오늘의 KBO 경기 예측</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">
-            경기 결과를 예측하고 포인트를 획득하세요!
-          </p>
-          <div className="flex flex-col gap-2 min-h-[60px]">
-            {loading && (
-              <div className="text-center text-gray-400">
-                경기 정보를 불러오는 중...
-              </div>
-            )}
-            {error && <div className="text-center text-red-500">{error}</div>}
-            {!loading && !error && games.length === 0 && (
-              <div className="text-center text-gray-400">
-                오늘 예정된 경기가 없습니다.
-              </div>
-            )}
-            {!loading &&
-              !error &&
-              games.map((game, idx) => {
-                if (game.state === KBO_GameState.CANCELLED) {
-                  return (
-                    <div
-                      key={idx}
-                      className="w-full bg-gradient-to-br from-gray-200/80 to-white dark:from-zinc-800 dark:to-zinc-900 rounded-xl shadow flex flex-col gap-2 p-4 mb-2 border-2 border-dashed border-red-400 dark:border-red-600 opacity-70"
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+      {/* 히어로 섹션 */}
+      <div className="relative overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <div className="relative z-10 pb-8 sm:pb-16 md:pb-20 lg:max-w-2xl lg:w-full lg:pb-28 xl:pb-32">
+            <main className="mt-10 mx-auto max-w-7xl px-4 sm:mt-12 sm:px-6 md:mt-16 lg:mt-20 lg:px-8 xl:mt-28">
+              <div className="sm:text-center lg:text-left">
+                <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
+                  <span className="block xl:inline">KBO 야구</span>{" "}
+                  <span className="block text-blue-600 xl:inline">
+                    예측 게임
+                  </span>
+                </h1>
+                <p className="mt-3 text-base text-gray-500 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
+                  경기 결과를 예측하고, 베팅으로 스릴을 즐기며, 포인트로
+                  아이템을 구매하세요. BallGenius와 함께 야구의 재미를
+                  배가시켜보세요!
+                </p>
+                <div className="mt-5 sm:mt-8 sm:flex sm:justify-center lg:justify-start">
+                  <div className="rounded-md shadow">
+                    <Link
+                      href="/predictions"
+                      className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg md:px-10 transition-colors"
                     >
-                      <div className="flex items-center justify-between w-full gap-2">
-                        <div className="flex flex-col items-center flex-1">
-                          <Image
-                            width={44}
-                            height={44}
-                            src={`https://sports-phinf.pstatic.net/team/kbo/default/${game.homeTeamId}.png?type=f108_108`}
-                            alt={game.homeTeamName}
-                            className="mb-1 grayscale"
-                          />
-                          <span className="font-bold text-base text-gray-400 dark:text-gray-500">
-                            {game.homeTeamName}
-                          </span>
-                        </div>
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="px-4 py-1 rounded-full bg-gray-300 text-gray-500 font-bold text-sm shadow border border-gray-400 cursor-not-allowed select-none">
-                            경기 취소
-                          </span>
-                        </div>
-                        <div className="flex flex-col items-center flex-1">
-                          <Image
-                            width={44}
-                            height={44}
-                            src={`https://sports-phinf.pstatic.net/team/kbo/default/${game.awayTeamId}.png?type=f108_108`}
-                            alt={game.awayTeamName}
-                            className="mb-1 grayscale"
-                          />
-                          <span className="font-bold text-base text-gray-400 dark:text-gray-500">
-                            {game.awayTeamName}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex justify-center items-center mt-2 text-xs text-gray-400 dark:text-gray-500 gap-2">
-                        <span>{game.time}</span>
-                        <span>·</span>
-                        <span>{game.stadium}</span>
-                      </div>
-                    </div>
-                  );
-                }
-                if (game.state === KBO_GameState.COMPLETED) {
-                  return (
-                    <div
-                      key={idx}
-                      className="w-full bg-gradient-to-br from-gray-100/80 to-white dark:from-zinc-900 dark:to-zinc-800 rounded-xl shadow flex flex-col gap-2 p-4 mb-2 border border-green-200 dark:border-green-700"
-                    >
-                      <div className="flex items-center justify-between w-full gap-2">
-                        {/* 홈팀 */}
-                        <div className="flex flex-col items-center flex-1">
-                          <Image
-                            width={44}
-                            height={44}
-                            src={`https://sports-phinf.pstatic.net/team/kbo/default/${game.homeTeamId}.png?type=f108_108`}
-                            alt={game.homeTeamName}
-                            className="mb-1"
-                          />
-                          <span className="font-bold text-base text-blue-900 dark:text-blue-100">
-                            {game.homeTeamName}
-                          </span>
-                        </div>
-                        {/* 점수 */}
-                        <div className="flex flex-col items-center gap-1 min-w-[70px]">
-                          <span className="px-4 py-1 rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 font-bold text-lg shadow border border-green-300 dark:border-green-700">
-                            {game.homeScore} : {game.awayScore}
-                          </span>
-                          <span className="text-xs text-gray-400">
-                            경기 종료
-                          </span>
-                        </div>
-                        {/* 어웨이팀 */}
-                        <div className="flex flex-col items-center flex-1">
-                          <Image
-                            width={44}
-                            height={44}
-                            src={`https://sports-phinf.pstatic.net/team/kbo/default/${game.awayTeamId}.png?type=f108_108`}
-                            alt={game.awayTeamName}
-                            className="mb-1"
-                          />
-                          <span className="font-bold text-base text-blue-900 dark:text-blue-100">
-                            {game.awayTeamName}
-                          </span>
-                        </div>
-                      </div>
-                      {/* 선발투수 정보 */}
-                      <div className="flex items-center justify-between w-full mt-2 gap-2">
-                        <div className="flex items-center gap-1 flex-1 justify-center">
-                          <span className="text-blue-700 dark:text-blue-200 font-bold text-xs">
-                            선발
-                          </span>
-                          <Image
-                            width={28}
-                            height={28}
-                            src={`https://sports-phinf.pstatic.net/player/kbo/default/${game.homePitcherId}.png?type=w150`}
-                            alt={game.homePitcherName}
-                            className="inline w-7 h-7 rounded-full border-2 border-blue-400 bg-white shadow"
-                            onError={(e) =>
-                              (e.currentTarget.style.display = "none")
-                            }
-                          />
-                          <span className="ml-1 text-xs font-bold text-blue-900 dark:text-blue-100">
-                            {game.homePitcherName}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-1 flex-1 justify-center">
-                          <span className="text-blue-700 dark:text-blue-200 font-bold text-xs">
-                            선발
-                          </span>
-                          <Image
-                            width={28}
-                            height={28}
-                            src={`https://sports-phinf.pstatic.net/player/kbo/default/${game.awayPitcherId}.png?type=w150`}
-                            alt={game.awayPitcherName}
-                            className="inline w-7 h-7 rounded-full border-2 border-blue-400 bg-white shadow"
-                            onError={(e) =>
-                              (e.currentTarget.style.display = "none")
-                            }
-                          />
-                          <span className="ml-1 text-xs font-bold text-blue-900 dark:text-blue-100">
-                            {game.awayPitcherName}
-                          </span>
-                        </div>
-                      </div>
-                      {/* 경기 정보 */}
-                      <div className="flex justify-center items-center mt-2 text-xs text-gray-500 dark:text-gray-300 gap-2">
-                        <span>{game.time}</span>
-                        <span>·</span>
-                        <span>{game.stadium}</span>
-                      </div>
-                    </div>
-                  );
-                }
-                return (
-                  <div
-                    key={idx}
-                    className="w-full bg-gradient-to-br from-blue-50/80 to-white dark:from-zinc-900 dark:to-zinc-800 rounded-xl shadow flex flex-col gap-2 p-4 mb-2 border border-blue-100 dark:border-zinc-700"
-                  >
-                    <div className="flex items-center justify-between w-full gap-2">
-                      {/* 홈팀 */}
-                      <div className="flex flex-col items-center flex-1">
-                        <Image
-                          width={44}
-                          height={44}
-                          src={`https://sports-phinf.pstatic.net/team/kbo/default/${game.homeTeamId}.png?type=f108_108`}
-                          alt={game.homeTeamName}
-                          className="mb-1"
-                        />
-                        <span className="font-bold text-base text-blue-900 dark:text-blue-100">
-                          {game.homeTeamName}
-                        </span>
-                      </div>
-                      {/* 예측 버튼/무승부 */}
-                      <div className="flex flex-col items-center gap-1">
-                        <button className="px-4 py-1 rounded-full bg-blue-500 text-white font-bold text-sm shadow hover:bg-blue-600 transition">
-                          {game.homeTeamName} 승
-                        </button>
-                        <button className="px-4 py-1 rounded-full bg-gray-300 text-gray-700 font-bold text-sm shadow hover:bg-gray-400 transition">
-                          무승부
-                        </button>
-                        <button className="px-4 py-1 rounded-full bg-red-500 text-white font-bold text-sm shadow hover:bg-red-600 transition">
-                          {game.awayTeamName} 승
-                        </button>
-                      </div>
-                      {/* 어웨이팀 */}
-                      <div className="flex flex-col items-center flex-1">
-                        <Image
-                          width={44}
-                          height={44}
-                          src={`https://sports-phinf.pstatic.net/team/kbo/default/${game.awayTeamId}.png?type=f108_108`}
-                          alt={game.awayTeamName}
-                          className="mb-1"
-                        />
-                        <span className="font-bold text-base text-blue-900 dark:text-blue-100">
-                          {game.awayTeamName}
-                        </span>
-                      </div>
-                    </div>
-                    {/* 선발투수 정보 */}
-                    <div className="flex items-center justify-between w-full mt-2 gap-2">
-                      <div className="flex items-center gap-1 flex-1 justify-center">
-                        <span className="text-blue-700 dark:text-blue-200 font-bold text-xs">
-                          선발
-                        </span>
-                        <Image
-                          width={28}
-                          height={28}
-                          src={`https://sports-phinf.pstatic.net/player/kbo/default/${game.homePitcherId}.png?type=w150`}
-                          alt={game.homePitcherName}
-                          className="inline w-7 h-7 rounded-full border-2 border-blue-400 bg-white shadow"
-                          onError={(e) =>
-                            (e.currentTarget.style.display = "none")
-                          }
-                        />
-                        <span className="ml-1 text-xs font-bold text-blue-900 dark:text-blue-100">
-                          {game.homePitcherName}
-                        </span>
-                      </div>
-                      <span className="text-blue-400 font-bold text-lg">|</span>
-                      <div className="flex items-center gap-1 flex-1 justify-center">
-                        <span className="text-blue-700 dark:text-blue-200 font-bold text-xs">
-                          선발
-                        </span>
-                        <Image
-                          width={28}
-                          height={28}
-                          src={`https://sports-phinf.pstatic.net/player/kbo/default/${game.awayPitcherId}.png?type=w150`}
-                          alt={game.awayPitcherName}
-                          className="inline w-7 h-7 rounded-full border-2 border-blue-400 bg-white shadow"
-                          onError={(e) =>
-                            (e.currentTarget.style.display = "none")
-                          }
-                        />
-                        <span className="ml-1 text-xs font-bold text-blue-900 dark:text-blue-100">
-                          {game.awayPitcherName}
-                        </span>
-                      </div>
-                    </div>
-                    {/* 경기 정보 */}
-                    <div className="flex justify-center items-center mt-2 text-xs text-gray-500 dark:text-gray-300 gap-2">
-                      <span>{game.time}</span>
-                      <span>·</span>
-                      <span>{game.stadium}</span>
-                    </div>
+                      경기 예측하기
+                    </Link>
                   </div>
-                );
-              })}
+                  <div className="mt-3 sm:mt-0 sm:ml-3">
+                    <Link
+                      href="/betting"
+                      className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 md:py-4 md:text-lg md:px-10 transition-colors"
+                    >
+                      베팅하기
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </main>
           </div>
-        </section>
-      </main>
-      <footer className="row-start-3 flex gap-4 flex-wrap items-center justify-center text-xs text-gray-500 dark:text-gray-400">
-        <span>© 2025 BallGenius. KBO 예측 플랫폼</span>
-      </footer>
+        </div>
+        <div className="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2">
+          <div className="h-56 w-full sm:h-72 md:h-96 lg:w-full lg:h-full bg-gradient-to-br from-blue-400 to-green-400 flex items-center justify-center">
+            <div className="text-white text-6xl">⚾</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 사용자 대시보드 (로그인된 경우) */}
+      {session && userStats && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">내 현황</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-blue-600">
+                  {userStats.points.toLocaleString()}
+                </div>
+                <div className="text-gray-600">보유 포인트</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-600">
+                  {userStats.predictions}
+                </div>
+                <div className="text-gray-600">총 예측 횟수</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-purple-600">
+                  {userStats.winRate}%
+                </div>
+                <div className="text-gray-600">예측 성공률</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 기능 소개 섹션 */}
+      <div className="py-12 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="lg:text-center">
+            <h2 className="text-base text-blue-600 font-semibold tracking-wide uppercase">
+              Features
+            </h2>
+            <p className="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+              BallGenius의 특별한 기능들
+            </p>
+            <p className="mt-4 max-w-2xl text-xl text-gray-500 lg:mx-auto">
+              단순한 예측을 넘어서는 야구 게임의 새로운 경험을 제공합니다.
+            </p>
+          </div>
+
+          <div className="mt-10">
+            <dl className="space-y-10 md:space-y-0 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-10">
+              <div className="relative">
+                <dt>
+                  <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
+                    <svg
+                      className="h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                      />
+                    </svg>
+                  </div>
+                  <p className="ml-16 text-lg leading-6 font-medium text-gray-900">
+                    경기 예측
+                  </p>
+                </dt>
+                <dd className="mt-2 ml-16 text-base text-gray-500">
+                  KBO 경기 결과를 예측하고 정확도에 따라 포인트를 획득하세요.
+                  연속 적중시 보너스 포인트도 받을 수 있습니다.
+                </dd>
+              </div>
+
+              <div className="relative">
+                <dt>
+                  <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-green-500 text-white">
+                    <svg
+                      className="h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                      />
+                    </svg>
+                  </div>
+                  <p className="ml-16 text-lg leading-6 font-medium text-gray-900">
+                    스마트 베팅
+                  </p>
+                </dt>
+                <dd className="mt-2 ml-16 text-base text-gray-500">
+                  실시간 배당률로 베팅하고 더 큰 수익을 노려보세요. 다양한 베팅
+                  옵션으로 재미를 배가시킵니다.
+                </dd>
+              </div>
+
+              <div className="relative">
+                <dt>
+                  <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-purple-500 text-white">
+                    <svg
+                      className="h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                      />
+                    </svg>
+                  </div>
+                  <p className="ml-16 text-lg leading-6 font-medium text-gray-900">
+                    포인트 상점
+                  </p>
+                </dt>
+                <dd className="mt-2 ml-16 text-base text-gray-500">
+                  획득한 포인트로 아바타, 뱃지, 부스터 등 다양한 아이템을
+                  구매하고 나만의 스타일을 만들어보세요.
+                </dd>
+              </div>
+
+              <div className="relative">
+                <dt>
+                  <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-yellow-500 text-white">
+                    <svg
+                      className="h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
+                      />
+                    </svg>
+                  </div>
+                  <p className="ml-16 text-lg leading-6 font-medium text-gray-900">
+                    리더보드
+                  </p>
+                </dt>
+                <dd className="mt-2 ml-16 text-base text-gray-500">
+                  다른 사용자들과 예측 실력을 겨루고 리더보드에서 최고 자리를
+                  차지해보세요.
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </div>
+
+      {/* CTA 섹션 */}
+      <div className="bg-blue-600">
+        <div className="max-w-2xl mx-auto text-center py-16 px-4 sm:py-20 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
+            <span className="block">지금 시작하세요!</span>
+          </h2>
+          <p className="mt-4 text-lg leading-6 text-blue-200">
+            회원가입하고 1000 포인트를 받아보세요.
+          </p>
+          <div className="mt-8">
+            {session ? (
+              <Link
+                href="/predictions"
+                className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-blue-600 bg-white hover:bg-blue-50 transition-colors"
+              >
+                예측하러 가기
+              </Link>
+            ) : (
+              <Link
+                href="/auth/register"
+                className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-blue-600 bg-white hover:bg-blue-50 transition-colors"
+              >
+                무료로 시작하기
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
